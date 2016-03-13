@@ -21,6 +21,8 @@
     "vox.js": "^1.0.1"
   },
   "devDependencies": {
+    "koa": "^1.2.0",
+    "koa-static": "^2.0.0",
     "webpack": "^1.12.14"
   }
 }
