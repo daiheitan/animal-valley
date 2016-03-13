@@ -15,7 +15,7 @@ function init() {
 
   var param = { voxelSize: 5 };
   parser.parse('../../models/duck_c.vox').then(function(voxelData) {
-    var builder = new Vox.MeshBuilder(voxelData, param);
+    var builder = new vox.MeshBuilder(voxelData, param);
     mesh = builder.createMesh();
     scene.add(mesh);
   })
