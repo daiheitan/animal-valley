@@ -1,28 +1,56 @@
 var scene, camera, renderer, mesh, controls;
-var animation, mixer, clock = new THREE.Clock();
+var mixer, clock = new THREE.Clock(), actions, currentAction;
 var updateListeners = [];
 var update = function(frame) {
     updateListeners.forEach(function(listener) {
         listener(frame);
     });
 };
-var frame = 0;
+var frame = 0, currentKey = undefined, moveSpeed = 2
+var KEY_MAP = {
+  38: 'up',
+  40: 'down',
+  37: 'left',
+  39: 'right'
+}
 
 init();
 animate();
 
-function init() {
+function bindKeyboard() {
+  window.addEventListener('keydown', function(e) {
+    var key = e.keyCode;
+    currentKey = KEY_MAP[key];
+    update();
+  })
+  
+  window.addEventListener('keyup', function() {
+    currentKey = undefined;
+    update();
+  })
+}
 
+function fadeTo(name) {
+  if (currentAction === name) return;
+  var from = actions[currentAction].play();
+  var to = actions[name].play();
+  frame.enabled = to.enabled = true;
+  from.crossFadeTo(to, 0.3);
+  currentAction = name;
+}
+
+function init() {
+  actions = {};
   scene = new THREE.Scene();
 
   camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 100 );
-  camera.position.set(-10, 10, 10)
-  camera.up = new THREE.Vector3(0, 0, 1)
+  camera.position.set(5, 5, 30)
+  // camera.up = new THREE.Vector3(0, 0, 1)
   camera.lookAt(0, 0, 0);
   
   controls = new THREE.TrackballControls( camera );
 
-  controls.rotateSpeed = 10.0;
+  controls.rotateSpeed = 1.0;
   controls.zoomSpeed = 1.2;
   controls.panSpeed = 0.8;
 
@@ -65,31 +93,53 @@ function init() {
   dirLight.shadow.camera.far = 3500;
   dirLight.shadow.ias = -0.0001;
 
-  mixer = new THREE.AnimationMixer(scene);
+  var axisHelper = new THREE.AxisHelper(500);
+  scene.add(axisHelper);
   var loader = new THREE.ObjectLoader();
-  loader.load('./duck3.json', function(obj) {
+  loader.load('./duck.json', function(obj) {
     obj.traverse(function(child) {
       if (child instanceof THREE.Mesh) {
-        // child.material.map = texture;
+        // child.rotation.set(-0.6, 1, 0.4)
         child.material.shading = THREE.FlatShading;
-        // child.material.skinning = true;
+        child.material.skinning = true;
         if (child.geometry.animations) {
-          var action = mixer.clipAction(child.geometry.animations[0], child);
-          // action.setEffectiveWeight(1);
+          mixer = new THREE.AnimationMixer(child);
+          child.geometry.animations.forEach(function(animation) {
+            actions[animation.name] = mixer.clipAction(animation, child);
+            actions[animation.name].setEffectiveWeight(1);
+          });
           // action.setLoop(THREE.LoopOnce, 0);
           // action.clampWhenFinished = true;
-          action.play();
+          currentAction = 'Rest';
+          actions.Rest.play();
         }
       }
     });
     mesh = obj;
-    // obj.rotation.set(0, - Math.PI / 2, 0.6)
     obj.position.set(0, 0, 5)
     scene.add(obj);
     // debugger
-    updateListeners.push(function(frame) {
+    updateListeners.push(function() {
       var delta = clock.getDelta();
       mixer.update(delta);
+      if (currentKey) {
+        fadeTo('Walk')
+        if (currentKey === 'up') {
+          mesh.position.z += delta * moveSpeed;
+          mesh.rotation.y = 0;
+        }
+        else if (currentKey === 'down') {
+          mesh.position.z -= delta * moveSpeed;
+          mesh.rotation.y = - Math.PI;
+        }
+        else if (currentKey === 'left') {
+          mesh.position.x -= delta * moveSpeed;
+          mesh.rotation.y = - Math.PI / 2;
+        } else if (currentKey === 'right') {
+          mesh.position.x += delta * moveSpeed;
+          mesh.rotation.y = Math.PI / 2;
+        }
+      } else fadeTo('Rest')
     });
   });
 
@@ -101,9 +151,10 @@ function init() {
   // //controls.addEventListener( 'change', render ); // add this only if there is no animation loop (requestAnimationFrame)
   // controls.enableDamping = true;
   // controls.dampingFactor = 0.25;
+  bindKeyboard();
   document.body.appendChild( renderer.domElement );
-
 }
+
 
 function animate() {
   requestAnimationFrame( animate );

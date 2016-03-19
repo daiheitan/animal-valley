@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/daiheitan/animal-valley#readme",
   "dependencies": {
-    "three": "^0.74.0",
+    "three": "^0.75.0",
     "vox.js": "^1.0.1"
   },
   "devDependencies": {
