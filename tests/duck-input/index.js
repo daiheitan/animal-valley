@@ -39,11 +39,31 @@ function fadeTo(name) {
   currentAction = name;
 }
 
+function generateSky(side, size) {
+  if (!size) size = 256;
+  var canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  var ctx = canvas.getContext('2d');
+  ctx.rect(0, 0, size, size);
+  if (side === 'side') {
+    var gradient = ctx.createLinearGradient(size / 2, 0, size / 2, size * 0.6);
+    gradient.addColorStop(0, '#476cb3');
+    gradient.addColorStop(1, '#86b6f4');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+  } else {
+    ctx.fillStyle = '#476cb3';
+    ctx.fill();
+  }
+  
+  return canvas;
+}
+
 function init() {
   actions = {};
   scene = new THREE.Scene();
 
-  camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 100 );
+  camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
   camera.position.set(5, 5, 30)
   // camera.up = new THREE.Vector3(0, 0, 1)
   camera.lookAt(0, 0, 0);
@@ -116,7 +136,7 @@ function init() {
       }
     });
     mesh = obj;
-    obj.position.set(0, 0, 5)
+    obj.position.set(0, 1, 5)
     scene.add(obj);
     // debugger
     updateListeners.push(function() {
@@ -124,11 +144,11 @@ function init() {
       mixer.update(delta);
       if (currentKey) {
         fadeTo('Walk')
-        if (currentKey === 'up') {
+        if (currentKey === 'down') {
           mesh.position.z += delta * moveSpeed;
           mesh.rotation.y = 0;
         }
-        else if (currentKey === 'down') {
+        else if (currentKey === 'up') {
           mesh.position.z -= delta * moveSpeed;
           mesh.rotation.y = - Math.PI;
         }
@@ -143,6 +163,36 @@ function init() {
     });
   });
 
+  // create the ground
+  var textureLoader = new THREE.TextureLoader();
+  textureLoader.load('./Grass_1.png', function(grassTexture) {
+    grassTexture.wrapS = THREE.RepeatWrapping;
+    grassTexture.wrapT = THREE.RepeatWrapping;
+    grassTexture.repeat.set( 40, 40 );
+    var groundMaterial = new THREE.MeshBasicMaterial({ map: grassTexture, side: THREE.FrontSide });
+    var ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000, 32), groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+  })
+  // create the sky
+  var skyTexture = new THREE.CubeTexture([generateSky('side'), generateSky('side'), generateSky('top'), generateSky('top'), generateSky('side'), generateSky('side')]);
+  skyTexture.format = THREE.RGBFormat;
+  skyTexture.needsUpdate = true;
+  
+  var shader = THREE.ShaderLib['cube'];
+  shader.uniforms.tCube.value = skyTexture;
+  
+  var skyMaterial = new THREE.ShaderMaterial({
+    fragmentShader: shader.fragmentShader,
+    vertexShader: shader.vertexShader,
+    uniforms: shader.uniforms,
+    depthWrite: false,
+    side: THREE.BackSide
+  });
+  
+  var skyBox = new THREE.Mesh(new THREE.BoxGeometry(1000, 1000, 1000), skyMaterial);
+  scene.add(skyBox);
+  
   renderer = new THREE.WebGLRenderer();
   renderer.setClearColor(0xFFFFFF);
   renderer.setSize( window.innerWidth, window.innerHeight );
